@@ -1,0 +1,95 @@
+---
+
+- name: Install and configure Tomcat server
+
+  hosts: 192.168.1.34
+
+  become: yes
+
+
+
+  tasks:
+
+    - name: Update apt
+
+      apt:
+
+        update_cache: yes
+
+
+
+    - name: Install Tomcat
+
+      apt:
+
+        name: tomcat9
+
+        state: present
+
+
+
+    - name: Open port 5757 for Tomcat
+
+      ufw:
+
+        rule: allow
+
+        port: 5757
+
+        proto: tcp
+
+
+
+    - name: Configure Tomcat to listen on port 5757
+
+      lineinfile:
+
+        path: /etc/tomcat9/server.xml
+
+        regexp: '.*Connector port="8080".*'
+
+        line: '<Connector port="5757" protocol="HTTP/1.1" connectionTimeout="20000" redirectPort="8443" />'
+
+      notify: Restart Tomcat
+
+
+
+    - name: Ensure destination directory exists
+
+      file:
+
+        path: "/var/lib/tomcat9/webapps/"
+
+        state: directory
+
+
+    - name: Remove previous WAR file
+
+      file:
+
+        path: "/var/lib/tomcat9/webapps/my_web_app.war"
+
+        state: absent
+
+
+    - name: Copy WAR file to Tomcat webapps directory
+
+      copy:
+
+        src: "/home/aanza/my_web_app/target/my-web-app-1.0.0.war"
+
+        dest: "/var/lib/tomcat9/webapps/my_web_app-1.0.0.war"
+
+        remote_src: no
+
+
+
+  handlers:
+
+    - name: Restart Tomcat
+
+      service:
+
+        name: tomcat9
+
+        state: restarted

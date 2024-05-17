@@ -1,0 +1,345 @@
+A) Brief introduction of the project: 
+I set up a standalone Tomcat server on my target machine, opened port 5757, and configured Tomcat to run on it. I then created a simple WAR file and deployed it on the Tomcat server. This process was automated using an Ansible playbook and a CI/CD pipeline in Jenkins.
+ 
+Here's a step-by-step guide to complete the project: 
+B) We are using a Linux system (specifically Ubuntu), with Ansible and Jenkins already installed on the master machine. Jenkins should have been installed in a previous project.
+ 
+STEPS:
+C)Now, Let's create the necessary directory and files.
+ 
+-Create a directory:
+$sudo mkdir tomcat-playbook
+ 
+-Get inside the directory:
+$ cd tomcat-playbook
+ 
+-Create all these necessary empty files:
+$ touch  ansible.cfg SimplilearnP1-tomcat-warfile-deployment.yaml
+ 
+-List the availability of these empty files:
+$ ls 
+ 
+D)Now, let’s start saving the contents in all the empty files that we have created :
+ 
+-Save Contents to Playbook:
+$ sudo nano SimplilearnP1-tomcat-warfile-deployment.yaml
+ 
+---
+- name: Install and configure Tomcat server
+ 
+  hosts: 192.168.1.34
+ 
+  become: yes
+ 
+ 
+ 
+  tasks:
+ 
+    - name: Update apt
+ 
+      apt:
+ 
+        update_cache: yes
+ 
+ 
+ 
+    - name: Install Tomcat
+ 
+      apt:
+ 
+        name: tomcat9
+ 
+        state: present
+ 
+ 
+ 
+    - name: Open port 5757 for Tomcat
+ 
+      ufw:
+ 
+        rule: allow
+ 
+        port: 5757
+ 
+        proto: tcp
+ 
+ 
+ 
+    - name: Configure Tomcat to listen on port 5757
+ 
+      lineinfile:
+ 
+        path: /etc/tomcat9/server.xml
+ 
+        regexp: '.*Connector port="8080".*'
+ 
+        line: '<Connector port="5757" protocol="HTTP/1.1" connectionTimeout="20000" redirectPort="8443" />'
+ 
+      notify: Restart Tomcat
+ 
+ 
+ 
+    - name: Ensure destination directory exists
+ 
+      file:
+ 
+        path: "/var/lib/tomcat9/webapps/"
+ 
+        state: directory
+ 
+ 
+ 
+    - name: Copy WAR file to Tomcat webapps directory
+ 
+      copy:
+ 
+        src: /home/aanza/my_web_app/my_web_app.war
+ 
+        dest: /var/lib/tomcat9/webapps/my_web_app.war
+ 
+        remote_src: no
+ 
+ 
+ 
+  handlers:
+ 
+    - name: Restart Tomcat
+ 
+      service:
+ 
+        name: tomcat9
+ 
+        state: restarted
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+-Paste the ansible.cfg contents here & save
+$ sudo nano ansible.cfg
+[defaults]
+host_key_checking = False
+ 
+E)Now, Let's create the necessary directory and files to create your own maven build.
+ 
+-Create a directory and required empty files:
+$ mkdir -p my_web_app/src/main/webapp/WEB-INF && touch my-web-app/src/main/webapp/index.jsp && touch my-web-app/src/main/webapp/WEB-INF/web.xml && touch my-web-app/pom.xml
+ 
+F) Now, let’s start saving the contents in all the empty files that we have created.Please make sure the structure of your root directory i:e my_web_app is as shown below:
+ 
+-Get inside the directory:
+$ cd my_web_app
+$ tree 
+.
+├── pom.xml
+└── src
+    └── main
+        └── webapp
+            ├── WEB-INF
+            │   └── web.xml
+            └── index.jsp
+ 
+4 directories, 3 files
+ 
+-Check the empty file and Paste the index.jsp contents here & save:
+$  cd ~/my_web_app/src/main/webapp
+$ ls
+$ sudo nano index.jsp
+<!DOCTYPE html>
+ 
+<html>
+ 
+<head>
+ 
+    <title>Simple Web Application</title>
+ 
+</head>
+ 
+<body>
+ 
+    <h1>Hello! from Anjali</h1>
+ 
+    <p>This is a simple web application deployed on Tomcat</p>
+ 
+</body>
+ 
+</html>
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+-Check the empty file inside the WEb-INF and save the content in "web.xml" file:
+$ cd WEB-INF
+$ ls
+$ sudo nano web.xml
+<?xml version="1.0" encoding="UTF-8"?>
+ 
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+ 
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ 
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
+ 
+         version="4.0">
+ 
+</web-app>
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+-Now, let’s save the content in pom.xml empty file(Note: Get back to the root directory "my_web_app" and execute there):
+$ cd ~
+$ cd my_web_app
+$ sudo nano pom.xml
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+ 
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ 
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+ 
+ 
+ 
+    <modelVersion>4.0.0</modelVersion>
+ 
+ 
+ 
+    <groupId>com.example</groupId>
+ 
+    <artifactId>my-web-app</artifactId>
+ 
+    <version>1.0.0</version>
+ 
+    <packaging>war</packaging>
+ 
+ 
+ 
+    <dependencies>
+ 
+        <!-- Add any dependencies here if needed -->
+ 
+    </dependencies>
+ 
+ 
+ 
+    <build>
+ 
+        <plugins>
+ 
+            <plugin>
+ 
+                <groupId>org.apache.maven.plugins</groupId>
+ 
+                <artifactId>maven-war-plugin</artifactId>
+ 
+                <version>3.2.3</version>
+ 
+                <configuration>
+ 
+                    <failOnMissingWebXml>false</failOnMissingWebXml>
+ 
+                    <webResources>
+ 
+                        <resource>
+ 
+                            <directory>${basedir}/src/main/webapp</directory>
+ 
+                            <includes>
+ 
+                                <include>**/*.jsp</include>
+ 
+                                <include>**/*.xml</include>
+ 
+                            </includes>
+ 
+                        </resource>
+ 
+                    </webResources>
+ 
+                </configuration>
+ 
+            </plugin>
+ 
+        </plugins>
+ 
+    </build>
+ 
+ 
+ 
+</project>
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ 
+G) Let's execute the maven build to create a warfile (Note:execute this command in the root directory where your pom.xml file and src directory resides i:e "my_web_app" directory):
+$ sudo mvn package
+$ tree
+Note:After execution you will see the structure of directory as shown below:
+ 
+.
+├── pom.xml
+├── src
+│   └── main
+│       └── webapp
+│           ├── WEB-INF
+│           │   └── web.xml
+│           └── index.jsp
+└── target
+    ├── maven-archiver
+    │   └── pom.properties
+    ├── my-web-app-1.0.0
+    │   ├── META-INF
+    │   ├── WEB-INF
+    │   │   ├── classes
+    │   │   └── web.xml
+    │   └── index.jsp
+    └── my-web-app-1.0.0.war
+ 
+H) Let's login into jenkins with your valid credentials:
+-Go to Dashboard
+-click New Item
+-Enter an item name 
+-tomcat-mvn-build (Note:This is the name i have given)
+-select pipeline 
+-click ok
+-select poll SCM
+-write */5 * * * * (Choose based on your requirement. I have set on every 5 mins)
+-click Pipeline Syntax
+-click Snippet Generator
+ 
+> Sample Steps>ansiblePlaybook:Invoke an ansible playbook
+>Ansible tool>myansible
+>Playbook file path in workspace>/home/aanza/tomcat-playbook/SimplilearnP1-tomcat-warfile-deployment.yaml
+>Inventory file path in workspace>/etc/ansible/hosts
+>SSH connection credentials>add>jenkins>Domain>Global Credentials Unrestricted
+>Kind>SSh username with Private Key
+>Id>Dev (Note:can give anything)
+>Username>aanza (Note:Your machine's username)
+>Private Key>Enter directly>Add> (Paste your private key)
+>Passphrase>(Note: Give same passphrase if given any during creating ssh-keygen)
+>Add
+ 
+- Now you will see the Id and username for ssh credential mine is Dev(aanza) and you will get back to the previous page and follow the rest of the configuration.
+-Disable the host SSH key check (check mark)
+-click "Generate Pipeline Script"
+-copy the pipeline script and go back to the configuration page where you see the pipeline script page and paste.
+-save and run the job
+-check the status of the job
+-If failed then fix and rerun.
+ 
+I) If the jenkin job is successful than let's ssh into target machine and check the tomcat9 server and warfile:
+-Go to your master machine and connect your target machine via ssh connection:
+$ ssh anjali@192.168.1.34
+ 
+-check the tomcat9 status
+$ sudo systemctl status tomcat9
+ 
+-check your warfile copied in target machine successfully or not:
+$ cd /var/lib/tomcat9/webapps
+$ls
+ 
+-Browse the tomctserver :
+http://192.168.1.34:5757/
+ 
+-Browse the warfile
+http://192.168.1.34:5757/my_web_app-1.0.0/
+ 
+ 
+Conclusion:
+You have successfully completed the project by creating a playbook which installs tomcat9 server in your target machine,created your maven build and deployed your warfile in tomcat9 server if you see the tomcat default page and warfile after browsing.
+ 
+The source code will be available in the two different repository one for playbook and one for maven build:
+ 
+1)source code for maven build:
+https://github.com/Anjali24-54/simplilearnP1-tomcat-mavenbuild-CI-CD
+ 
+2)source code for playbook:
+https://github.com/Anjali24-54/simplilearnp1-tomcat-playbook
+ 
